@@ -8,7 +8,7 @@ import { Marquee } from '../components/LooComponents';
 import BidCube from '../components/BidCube';
 import EventFeed from '../components/EventFeed';
 import { type AuctionData, type BidEvent, auctionClient } from '../lib/contract';
-import { useWallet } from '../hooks/useWallet';
+import { useWallet } from '../contexts/WalletContext';
 
 type FilterType = 'all' | 'active' | 'ended' | 'cancelled';
 

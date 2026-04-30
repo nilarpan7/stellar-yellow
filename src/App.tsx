@@ -11,6 +11,7 @@ import AuctionDetail from './pages/AuctionDetail';
 import MyAuctions from './pages/MyAuctions';
 import NotFound from './pages/NotFound';
 import { CustomCursor, BrutalistBackground } from './components/LooComponents';
+import { WalletProvider } from './contexts/WalletContext';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -46,6 +47,7 @@ export default function App() {
   }, []);
 
   return (
+    <WalletProvider>
     <BrowserRouter>
       <ScrollToTop />
       <div className="bg-zinc-950 min-h-screen text-zinc-100 selection:bg-lime-400 selection:text-black cursor-none flex flex-col">
@@ -80,5 +82,6 @@ export default function App() {
         }}
       />
     </BrowserRouter>
+    </WalletProvider>
   );
 }

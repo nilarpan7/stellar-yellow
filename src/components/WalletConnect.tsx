@@ -1,14 +1,21 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Wallet, ChevronDown, LogOut, ExternalLink, AlertCircle, X } from 'lucide-react';
-import { useWallet } from '../hooks/useWallet';
+import { useWallet } from '../contexts/WalletContext';
 import { truncateAddress, getExplorerAccountUrl } from '../lib/stellar';
 import { SUPPORTED_WALLETS } from '../lib/wallet';
 
 export default function WalletConnect() {
-  const { wallet, isConnected, isConnecting, isReconnecting, error, connect, disconnect, clearError } = useWallet();
+  const { wallet, isConnected, isConnecting, error, connect, disconnect, clearError, openSignal } = useWallet();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showConnectModal, setShowConnectModal] = useState(false);
+
+  // Listen for external open modal requests (e.g., from the hero section button)
+  useEffect(() => {
+    if (openSignal > 0) {
+      setShowConnectModal(true);
+    }
+  }, [openSignal]);
 
   const handleConnect = async (walletId: string) => {
     setShowConnectModal(false);
@@ -123,12 +130,6 @@ export default function WalletConnect() {
 
   return (
     <div className="flex items-center gap-2">
-      {isReconnecting && !isConnected && (
-        <div className="flex items-center gap-2 text-xs text-zinc-400 font-mono">
-          <div className="spinner" style={{ width: 12, height: 12 }} />
-          Reconnecting…
-        </div>
-      )}
       {error && (
         <div className="flex items-center gap-2 px-3 py-2 text-pink-500 border border-pink-500 font-mono text-xs uppercase tracking-widest">
           <AlertCircle size={12} />

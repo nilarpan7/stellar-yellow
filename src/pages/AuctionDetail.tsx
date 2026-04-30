@@ -6,7 +6,7 @@ import {
   ExternalLink, Share2, Flag, Loader2
 } from 'lucide-react';
 import { type AuctionData, type BidEvent, auctionClient } from '../lib/contract';
-import { useWallet } from '../hooks/useWallet';
+import { useWallet } from '../contexts/WalletContext';
 import { useContract } from '../hooks/useContract';
 import { useAuctionEvents } from '../hooks/useAuctionEvents';
 import CountdownTimer from '../components/CountdownTimer';

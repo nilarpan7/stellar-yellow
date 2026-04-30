@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Trophy, Gavel, TrendingUp, Wallet } from 'lucide-react';
 import { type AuctionData, auctionClient } from '../lib/contract';
-import { useWallet } from '../hooks/useWallet';
+import { useWallet } from '../contexts/WalletContext';
 import AuctionCard from '../components/AuctionCard';
 
 type TabType = 'created' | 'bidding' | 'won';

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Image, Clock, DollarSign, FileText, Tag, AlertCircle, Info } from 'lucide-react';
-import { useWallet } from '../hooks/useWallet';
+import { useWallet } from '../contexts/WalletContext';
 import { useContract } from '../hooks/useContract';
 import { auctionClient } from '../lib/contract';
 import TxStatusModal from '../components/TxStatusModal';
