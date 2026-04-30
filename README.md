@@ -87,8 +87,12 @@ A decentralized, real-time auction platform built on Stellar Soroban Testnet. Cr
 
 **View on Explorer:** [Stellar Expert](https://stellar.expert/explorer/testnet/contract/CDGCWEZ5QQOVFMWJAQVYBUFJWQQBCFFPY7O56GIIFDSQLNYDDAUUXBS6)
 
-**Example Transaction Hash (Contract Call):**
-`5e4f8a2b1c...` *(Replace with your actual tx hash from Stellar Explorer)*
+### Contract Deployment Verification
+
+![Contract Address](docs/contract-address.png)
+
+**Example Transaction Hash (Contract Call - create_auction):**
+[`9a0afc12683b267bbcdf35b207953b818e5c87cdb050ebafb0aef56620b9f1a7`](https://stellar.expert/explorer/testnet/tx/9a0afc12683b267bbcdf35b207953b818e5c87cdb050ebafb0aef56620b9f1a7)
 
 > ⚠️ **To get a verifiable transaction hash:** Connect your wallet, create an auction or place a bid, and copy the tx hash from the success modal's "View on Stellar Explorer" link.
 
@@ -115,7 +119,10 @@ Multi-wallet support with Freighter, Albedo, and xBull:
 2. Click "Create Auction" button
 3. Fill in item details (name, description, starting price, duration)
 4. Optionally add an image URL
-5. Sign the transaction in your wallet
+5. Sign the transaction in your wallet:
+   
+   ![Transaction Approval](docs/transaction-approval.png)
+   
 6. Wait for confirmation (3 seconds)
 
 ### Placing a Bid
