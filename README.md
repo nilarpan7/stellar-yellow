@@ -94,7 +94,7 @@ A decentralized, real-time auction platform built on Stellar Soroban Testnet. Cr
 **Example Transaction Hash (Contract Call - create_auction):**
 [`9a0afc12683b267bbcdf35b207953b818e5c87cdb050ebafb0aef56620b9f1a7`](https://stellar.expert/explorer/testnet/tx/9a0afc12683b267bbcdf35b207953b818e5c87cdb050ebafb0aef56620b9f1a7)
 
-> ⚠️ **To get a verifiable transaction hash:** Connect your wallet, create an auction or place a bid, and copy the tx hash from the success modal's "View on Stellar Explorer" link.
+![Transaction Hash Verification](docs/transaction%20hash.png)
 
 ### Wallet Options
 
