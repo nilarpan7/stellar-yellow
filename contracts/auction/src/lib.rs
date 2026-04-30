@@ -15,6 +15,9 @@ const ERR_AUCTION_ALREADY_ENDED: u32 = 2;
 const ERR_BID_TOO_LOW: u32 = 3;
 const ERR_NOT_EXPIRED: u32 = 4;
 const ERR_AUCTION_NOT_ACTIVE: u32 = 5;
+const ERR_NOT_CREATOR: u32 = 6;
+const ERR_HAS_BIDS: u32 = 7;
+const ERR_ALREADY_CANCELLED: u32 = 8;
 
 // ─── Data Types ──────────────────────────────────────────────────────────────
 #[contracttype]
@@ -22,6 +25,7 @@ const ERR_AUCTION_NOT_ACTIVE: u32 = 5;
 pub enum AuctionStatus {
     Active,
     Ended,
+    Cancelled,
 }
 
 #[contracttype]
@@ -179,6 +183,44 @@ impl AuctionContract {
         env.events().publish(
             (symbol_short!("auc_end"), auction_id),
             (auction.highest_bidder.clone(), auction.highest_bid),
+        );
+    }
+
+    /// Cancel an auction (only creator, only before external bids).
+    pub fn cancel_auction(env: Env, auction_id: u64, caller: Address) {
+        // Authenticate the caller
+        caller.require_auth();
+
+        let key = DataKey::Auction(auction_id);
+        let mut auction: Auction = env
+            .storage()
+            .instance()
+            .get(&key)
+            .unwrap_or_else(|| panic_with_error(&env, ERR_AUCTION_NOT_FOUND));
+
+        // Only creator can cancel
+        if auction.creator != caller {
+            panic_with_error(&env, ERR_NOT_CREATOR);
+        }
+
+        // Can only cancel active auctions
+        if auction.status != AuctionStatus::Active {
+            panic_with_error(&env, ERR_ALREADY_CANCELLED);
+        }
+
+        // Can only cancel if no external bids (highest bidder is still creator)
+        if auction.highest_bidder != auction.creator {
+            panic_with_error(&env, ERR_HAS_BIDS);
+        }
+
+        auction.status = AuctionStatus::Cancelled;
+        env.storage().instance().set(&key, &auction);
+        env.storage().instance().extend_ttl(100_000, 100_000);
+
+        // Emit auction cancelled event
+        env.events().publish(
+            (symbol_short!("auc_cncl"), auction_id),
+            caller,
         );
     }
 

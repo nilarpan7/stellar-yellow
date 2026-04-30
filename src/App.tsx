@@ -1,13 +1,16 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import DemoBanner from './components/DemoBanner';
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import Lenis from "lenis";
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import CreateAuction from './pages/CreateAuction';
 import AuctionDetail from './pages/AuctionDetail';
 import MyAuctions from './pages/MyAuctions';
 import NotFound from './pages/NotFound';
+import { CustomCursor, BrutalistBackground } from './components/LooComponents';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -18,13 +21,38 @@ function ScrollToTop() {
 }
 
 export default function App() {
+  useEffect(() => {
+    gsap.registerPlugin(ScrollTrigger);
+  }, []);
+
+  useEffect(() => {
+    const lenis = new Lenis({
+        duration: 1.2,
+        easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+        orientation: 'vertical',
+        smoothWheel: true,
+    });
+
+    lenis.on('scroll', ScrollTrigger.update);
+    gsap.ticker.add((time) => {
+        lenis.raf(time * 1000);
+    });
+    gsap.ticker.lagSmoothing(0);
+
+    return () => {
+        lenis.destroy();
+        gsap.ticker.remove(lenis.raf);
+    }
+  }, []);
+
   return (
     <BrowserRouter>
       <ScrollToTop />
-      <div className="flex flex-col min-h-screen">
-        <DemoBanner />
+      <div className="bg-zinc-950 min-h-screen text-zinc-100 selection:bg-lime-400 selection:text-black cursor-none flex flex-col">
+        <CustomCursor />
+        <BrutalistBackground />
         <Navbar />
-        <main className="flex-1">
+        <main className="flex-1 relative z-10">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/create" element={<CreateAuction />} />

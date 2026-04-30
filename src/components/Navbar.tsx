@@ -39,39 +39,27 @@ export default function Navbar() {
   }, [isMobileMenuOpen]);
 
   return (
-    <nav className="sticky top-0 z-40 border-b" style={{
-      background: 'rgba(10, 11, 15, 0.85)',
-      backdropFilter: 'blur(16px)',
-      borderColor: 'rgba(139, 92, 246, 0.12)',
-    }}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
-        {/* Logo */}
-        <Link to="/" className="flex items-center gap-2.5 group">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)' }}>
-            <Zap size={16} className="text-white" />
+    <nav className="sticky top-0 z-40 border-b border-white/10 bg-zinc-950/80 backdrop-blur-md font-mono">
+      <div className="max-w-[1920px] mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
+        <Link to="/" className="flex items-center gap-2 group font-bold tracking-tighter text-white">
+          <div className="w-8 h-8 rounded-none flex items-center justify-center bg-lime-400">
+            <Zap size={16} className="text-black" />
           </div>
-          <span className="font-bold text-lg tracking-tight">
-            <span className="gradient-text">Stellar</span>
-            <span className="text-white">Bid</span>
+          <span className="text-lg uppercase">
+            STELLAR_BID
           </span>
         </Link>
 
         {/* Nav Links */}
-        <div className="hidden sm:flex items-center gap-1">
-          {navLinks.map(({ to, label, icon }) => {
+        <div className="hidden sm:flex items-center gap-8 text-sm text-zinc-400">
+          {navLinks.map(({ to, label }) => {
             const isActive = location.pathname === to;
             return (
               <Link
                 key={to}
                 to={to}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all"
-                style={{
-                  color: isActive ? '#a78bfa' : '#94a3b8',
-                  background: isActive ? 'rgba(139,92,246,0.1)' : 'transparent',
-                }}
+                className={`hover:text-lime-400 transition-colors uppercase tracking-widest ${isActive ? 'text-lime-400' : ''}`}
               >
-                {icon}
                 {label}
               </Link>
             );
@@ -103,17 +91,15 @@ export default function Navbar() {
           />
           
           {/* Menu Panel */}
-          <div className="fixed top-0 left-0 right-0 bg-[#161b27] border-b border-purple-500/20 shadow-2xl">
+          <div className="fixed top-0 left-0 right-0 bg-zinc-950 border-b border-white/10 shadow-2xl font-mono">
             {/* Header */}
-            <div className="flex items-center justify-between px-4 h-16 border-b border-slate-700/50">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-                  style={{ background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)' }}>
-                  <Zap size={16} className="text-white" />
+            <div className="flex items-center justify-between px-4 h-16 border-b border-white/10">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-none flex items-center justify-center bg-lime-400">
+                  <Zap size={16} className="text-black" />
                 </div>
-                <span className="font-bold text-lg tracking-tight">
-                  <span className="gradient-text">Stellar</span>
-                  <span className="text-white">Bid</span>
+                <span className="font-bold text-lg uppercase tracking-tighter text-white">
+                  STELLAR_BID
                 </span>
               </div>
               <button
@@ -127,20 +113,15 @@ export default function Navbar() {
 
             {/* Navigation Links */}
             <div className="p-4 space-y-2">
-              {navLinks.map(({ to, label, icon }) => {
+              {navLinks.map(({ to, label }) => {
                 const isActive = location.pathname === to;
                 return (
                   <Link
                     key={to}
                     to={to}
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className="flex items-center gap-3 px-4 py-3 rounded-lg text-base font-medium transition-all"
-                    style={{
-                      color: isActive ? '#a78bfa' : '#94a3b8',
-                      background: isActive ? 'rgba(139,92,246,0.1)' : 'transparent',
-                    }}
+                    className={`block px-4 py-3 rounded-none text-base uppercase tracking-widest font-bold transition-all ${isActive ? 'bg-white/5 text-lime-400' : 'text-zinc-400 hover:bg-white/5 hover:text-white'}`}
                   >
-                    {icon}
                     {label}
                   </Link>
                 );
@@ -148,7 +129,7 @@ export default function Navbar() {
             </div>
 
             {/* Wallet Connect in Mobile Menu */}
-            <div className="p-4 border-t border-slate-700/50">
+            <div className="p-4 border-t border-white/10">
               <WalletConnect />
             </div>
           </div>

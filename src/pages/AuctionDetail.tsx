@@ -16,34 +16,6 @@ import EventFeed from '../components/EventFeed';
 import TxStatusModal from '../components/TxStatusModal';
 import { truncateAddress, getExplorerAccountUrl } from '../lib/stellar';
 
-// Demo auction data for when contract isn't deployed
-const DEMO_AUCTIONS: Record<number, AuctionData> = {
-  1: {
-    id: 1,
-    creator: 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN',
-    itemName: 'Vintage Stellar NFT #001',
-    description: 'A rare digital collectible from the early Stellar ecosystem — one of only 100 ever minted. This piece was among the first assets tokenized on the Stellar network, making it a true historical artifact of decentralized finance.',
-    startingPrice: 10,
-    highestBid: 42.5,
-    highestBidder: 'GBVKI23OQZCANDNZINLJR5JZJH5IAJTGKIN2ER7LBNVKOCCWNGAZI4TC',
-    endTime: new Date(Date.now() + 3 * 3600 * 1000),
-    status: 'active',
-    imageUrl: '',
-  },
-  2: {
-    id: 2,
-    creator: 'GBVKI23OQZCANDNZINLJR5JZJH5IAJTGKIN2ER7LBNVKOCCWNGAZI4TC',
-    itemName: 'Soroban Pioneer Badge',
-    description: 'Exclusive badge for early Soroban smart contract deployers. Provable on-chain ownership.',
-    startingPrice: 5,
-    highestBid: 28,
-    highestBidder: 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN',
-    endTime: new Date(Date.now() + 7200 * 1000),
-    status: 'active',
-    imageUrl: '',
-  },
-};
-
 export default function AuctionDetail() {
   const { id } = useParams<{ id: string }>();
   const auctionId = Number(id);
@@ -77,9 +49,9 @@ export default function AuctionDetail() {
     setIsLoading(true);
     try {
       const data = await auctionClient.getAuction(auctionId);
-      setAuction(data || DEMO_AUCTIONS[auctionId] || null);
+      setAuction(data);
     } catch {
-      setAuction(DEMO_AUCTIONS[auctionId] || null);
+      setAuction(null);
     } finally {
       setIsLoading(false);
     }
@@ -170,9 +142,35 @@ export default function AuctionDetail() {
     );
   };
 
+  const handleCancelAuction = async () => {
+    if (!wallet) return;
+    await execute(
+      async () => {
+        const txHash = await auctionClient.cancelAuction({
+          auctionId,
+          caller: wallet.address,
+          signTransaction: async (xdr) => {
+            const { getWalletKit } = await import('../lib/wallet');
+            const { NETWORK_CONFIG } = await import('../lib/stellar');
+            const kit = getWalletKit();
+            const { signedTxXdr } = await kit.signTransaction(xdr, {
+              networkPassphrase: NETWORK_CONFIG.networkPassphrase,
+            });
+            return signedTxXdr;
+          },
+        });
+        setAuction(a => a ? { ...a, status: 'cancelled' } : a);
+        return txHash;
+      },
+      { pendingMessage: 'Cancelling auction…', successMessage: 'Auction cancelled successfully!' }
+    );
+  };
+
   const isActive = auction?.status === 'active' && (auction?.endTime || new Date(0)) > new Date();
   const isExpiredButNotEnded = auction?.status === 'active' && (auction?.endTime || new Date(0)) <= new Date();
   const isHighestBidder = !!wallet && auction?.highestBidder === wallet.address;
+  const isCreator = !!wallet && auction?.creator === wallet.address;
+  const canCancel = isCreator && isActive && auction?.highestBidder === auction?.creator;
 
   if (isLoading) {
     return (
@@ -227,7 +225,11 @@ export default function AuctionDetail() {
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-slate-500 text-sm font-mono">Auction #{auction.id}</span>
-                  {isActive ? (
+                  {auction.status === 'cancelled' ? (
+                    <span className="badge" style={{ background: 'rgba(239,68,68,0.15)', color: '#f87171', border: '1px solid rgba(239,68,68,0.3)' }}>
+                      Cancelled
+                    </span>
+                  ) : isActive ? (
                     <span className="badge badge-active"><span className="live-dot" /> Live</span>
                   ) : (
                     <span className="badge badge-ended">Ended</span>
@@ -350,6 +352,32 @@ export default function AuctionDetail() {
                 </button>
               )}
             </div>
+
+            {/* Cancel Auction Button (for creator before external bids) */}
+            {canCancel && isConnected && (
+              <button
+                onClick={handleCancelAuction}
+                disabled={txState.status === 'pending'}
+                className="btn-secondary w-full justify-center"
+                id="cancel-auction-btn"
+                style={{
+                  background: 'rgba(239,68,68,0.1)',
+                  borderColor: 'rgba(239,68,68,0.3)',
+                  color: '#f87171',
+                }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.15)';
+                  (e.currentTarget as HTMLElement).style.borderColor = 'rgba(239,68,68,0.5)';
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.1)';
+                  (e.currentTarget as HTMLElement).style.borderColor = 'rgba(239,68,68,0.3)';
+                }}
+              >
+                <Flag size={14} />
+                Cancel Auction
+              </button>
+            )}
 
             {/* End Auction Button (for expired auctions) */}
             {isExpiredButNotEnded && isConnected && (

@@ -7,48 +7,6 @@ import AuctionCard from '../components/AuctionCard';
 
 type TabType = 'created' | 'bidding' | 'won';
 
-function getDemoAuctionsForUser(address: string): AuctionData[] {
-  const now = Date.now();
-  return [
-    {
-      id: 101,
-      creator: address,
-      itemName: 'My Demo Auction',
-      description: 'An auction you created (demo data)',
-      startingPrice: 5,
-      highestBid: 12,
-      highestBidder: 'GBVKI23OQZCANDNZINLJR5JZJH5IAJTGKIN2ER7LBNVKOCCWNGAZI4TC',
-      endTime: new Date(now + 24 * 3600 * 1000),
-      status: 'active',
-      imageUrl: '',
-    },
-    {
-      id: 102,
-      creator: 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN',
-      itemName: 'Demo Auction (You\'re Bidding)',
-      description: 'An auction where you are the highest bidder (demo data)',
-      startingPrice: 10,
-      highestBid: 25,
-      highestBidder: address,
-      endTime: new Date(now + 12 * 3600 * 1000),
-      status: 'active',
-      imageUrl: '',
-    },
-    {
-      id: 103,
-      creator: 'GBVKI23OQZCANDNZINLJR5JZJH5IAJTGKIN2ER7LBNVKOCCWN',
-      itemName: 'Demo Auction (You Won)',
-      description: 'An auction you won (demo data)',
-      startingPrice: 15,
-      highestBid: 50,
-      highestBidder: address,
-      endTime: new Date(now - 1000),
-      status: 'ended',
-      imageUrl: '',
-    },
-  ];
-}
-
 export default function MyAuctions() {
   const { wallet, isConnected, connect } = useWallet();
   const [tab, setTab] = useState<TabType>('bidding');
@@ -66,8 +24,7 @@ export default function MyAuctions() {
       try {
         const count = await auctionClient.getAuctionCount();
         if (count === 0) {
-          // Use demo data when no contract deployed
-          setAllAuctions(getDemoAuctionsForUser(wallet.address));
+          setAllAuctions([]);
           setIsLoading(false);
           return;
         }
@@ -77,8 +34,7 @@ export default function MyAuctions() {
         const results = (await Promise.all(promises)).filter(Boolean) as AuctionData[];
         setAllAuctions(results);
       } catch {
-        // Fallback to demo data on error
-        setAllAuctions(getDemoAuctionsForUser(wallet.address));
+        setAllAuctions([]);
       } finally {
         setIsLoading(false);
       }

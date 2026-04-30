@@ -16,7 +16,7 @@ interface FormData {
 
 export default function CreateAuction() {
   const navigate = useNavigate();
-  const { wallet, isConnected, connect, signTransaction } = useWallet();
+  const { wallet, isConnected, connect } = useWallet();
   const { txState, execute, reset } = useContract();
 
   const [form, setForm] = useState<FormData>({
@@ -54,7 +54,15 @@ export default function CreateAuction() {
           description: form.description.trim(),
           startingPriceXlm: parseFloat(form.startingPriceXlm),
           durationHours: parseFloat(form.durationHours),
-          signTransaction,
+          signTransaction: async (xdr) => {
+            const { getWalletKit } = await import('../lib/wallet');
+            const { NETWORK_CONFIG } = await import('../lib/stellar');
+            const kit = getWalletKit();
+            const { signedTxXdr } = await kit.signTransaction(xdr, {
+              networkPassphrase: NETWORK_CONFIG.networkPassphrase,
+            });
+            return signedTxXdr;
+          },
         });
         return txHash;
       },
@@ -65,7 +73,9 @@ export default function CreateAuction() {
     );
 
     if (result) {
-      setTimeout(() => { navigate('/'); }, 2000);
+      setTimeout(() => { 
+        navigate('/', { state: { refresh: true } }); 
+      }, 3000);
     }
   };
 

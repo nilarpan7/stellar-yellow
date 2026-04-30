@@ -46,30 +46,23 @@ export function useWallet() {
       const Kit = getWalletKit();
 
       if (walletId) {
-        // Direct connection to a specified wallet
+        // Pre-select the wallet, then let authModal handle the actual connection
+        // so the wallet extension properly prompts the user for approval
         Kit.setWallet(walletId);
-        const { address } = await Kit.getAddress();
-        setWallet({
-          address,
-          walletId,
-          walletName: walletId,
-          isConnected: true,
-        });
-        saveWalletToStorage(walletId);
-      } else {
-        // Open the built-in auth modal — returns address on success
-        const { address } = await Kit.authModal();
-        // After authModal resolves, the selected module is already set internally
-        const selectedId = Kit.selectedModule?.productId || 'freighter';
-        const selectedName = Kit.selectedModule?.productName || selectedId;
-        setWallet({
-          address,
-          walletId: selectedId,
-          walletName: selectedName,
-          isConnected: true,
-        });
-        saveWalletToStorage(selectedId);
       }
+
+      // authModal triggers the wallet's own authorization popup
+      const { address } = await Kit.authModal();
+      const selectedId = Kit.selectedModule?.productId ?? walletId ?? 'freighter';
+      const selectedName = Kit.selectedModule?.productName ?? selectedId;
+
+      setWallet({
+        address,
+        walletId: selectedId,
+        walletName: selectedName,
+        isConnected: true,
+      });
+      saveWalletToStorage(selectedId);
     } catch (err) {
       const appError = parseContractError(err);
       setError(appError);

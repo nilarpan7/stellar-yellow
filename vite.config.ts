@@ -10,13 +10,18 @@ export default defineConfig({
   ],
   define: {
     global: 'globalThis',
+    'process.env': {},
   },
   resolve: {
     alias: {
       buffer: 'buffer',
+      process: 'process/browser',
+      stream: 'stream-browserify',
+      util: 'util',
     },
   },
   optimizeDeps: {
+    include: ['buffer', 'process'],
     esbuildOptions: {
       define: {
         global: 'globalThis',

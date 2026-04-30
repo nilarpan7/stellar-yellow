@@ -1,98 +1,49 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
-import { Plus, Search, Gavel, Zap, TrendingUp } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
+import { Plus, Search, Gavel, Zap, TrendingUp, RefreshCw, ArrowUpRight } from 'lucide-react';
+import { useLayoutEffect, useRef } from 'react';
+import gsap from "gsap";
 import AuctionCard from '../components/AuctionCard';
+import { Marquee } from '../components/LooComponents';
+import BidCube from '../components/BidCube';
 import { type AuctionData, auctionClient } from '../lib/contract';
 import { useWallet } from '../hooks/useWallet';
 
-// ─── Simulated/Demo Auctions ─────────────────────────────────────────────────
-// Frozen at module load time so Date objects are stable across renders
-const DEMO_AUCTIONS: AuctionData[] = (() => {
-  const now = Date.now();
-  return [
-    {
-      id: 1,
-      creator: 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN',
-      itemName: 'Vintage Stellar NFT #001',
-      description: 'A rare digital collectible from the early Stellar ecosystem — one of only 100 ever minted.',
-      startingPrice: 10,
-      highestBid: 42.5,
-      highestBidder: 'GBVKI23OQZCANDNZINLJR5JZJH5IAJTGKIN2ER7LBNVKOCCWNGAZI4TC',
-      endTime: new Date(now + 3 * 3600 * 1000),
-      status: 'active',
-      imageUrl: '',
-    },
-    {
-      id: 2,
-      creator: 'GBVKI23OQZCANDNZINLJR5JZJH5IAJTGKIN2ER7LBNVKOCCWNGAZI4TC',
-      itemName: 'Soroban Pioneer Badge',
-      description: 'Exclusive badge for early Soroban smart contract deployers. Provable on-chain ownership.',
-      startingPrice: 5,
-      highestBid: 28,
-      highestBidder: 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN',
-      endTime: new Date(now + 7200 * 1000),
-      status: 'active',
-      imageUrl: '',
-    },
-    {
-      id: 3,
-      creator: 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN',
-      itemName: 'Lumens Genesis Certificate',
-      description: 'Historical certificate commemorating the first XLM transaction on the Stellar mainnet.',
-      startingPrice: 25,
-      highestBid: 110,
-      highestBidder: 'GBVKI23OQZCANDNZINLJR5JZJH5IAJTGKIN2ER7LBNVKOCCWNGAZI4TC',
-      endTime: new Date(now - 1000),
-      status: 'ended',
-      imageUrl: '',
-    },
-    {
-      id: 4,
-      creator: 'GBVKI23OQZCANDNZINLJR5JZJH5IAJTGKIN2ER7LBNVKOCCWNGAZI4TC',
-      itemName: 'Stellar DEX Liquidity Trophy',
-      description: 'Awarded to top DEX liquidity providers in Q1 2024. Ultra rare — only 10 exist.',
-      startingPrice: 15,
-      highestBid: 15,
-      highestBidder: 'GBVKI23OQZCANDNZINLJR5JZJH5IAJTGKIN2ER7LBNVKOCCWNGAZI4TC',
-      endTime: new Date(now + 12 * 3600 * 1000),
-      status: 'active',
-      imageUrl: '',
-    },
-    {
-      id: 5,
-      creator: 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN',
-      itemName: 'Testnet Validator Node Key',
-      description: 'A symbolic key representing early Stellar testnet validation authority.',
-      startingPrice: 50,
-      highestBid: 87,
-      highestBidder: 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN',
-      endTime: new Date(now + 30 * 60 * 1000),
-      status: 'active',
-      imageUrl: '',
-    },
-    {
-      id: 6,
-      creator: 'GBVKI23OQZCANDNZINLJR5JZJH5IAJTGKIN2ER7LBNVKOCCWNGAZI4TC',
-      itemName: 'Soroban Beta Tester NFT',
-      description: 'Commemorative NFT for early Soroban beta testers who submitted bug reports.',
-      startingPrice: 8,
-      highestBid: 33,
-      highestBidder: 'GBVKI23OQZCANDNZINLJR5JZJH5IAJTGKIN2ER7LBNVKOCCWNGAZI4TC',
-      endTime: new Date(now + 2 * 24 * 3600 * 1000),
-      status: 'active',
-      imageUrl: '',
-    },
-  ];
-})();
-
-type FilterType = 'all' | 'active' | 'ended';
+type FilterType = 'all' | 'active' | 'ended' | 'cancelled';
 
 export default function Home() {
+  const location = useLocation();
   const [auctions, setAuctions] = useState<AuctionData[]>([]);
   const [filter, setFilter] = useState<FilterType>('all');
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const { isConnected, connect } = useWallet();
+  const { isConnected, openModal } = useWallet();
+  const heroRef = useRef(null);
+
+  useLayoutEffect(() => {
+      const ctx = gsap.context(() => {
+          const tl = gsap.timeline();
+          tl.from(".hero-line", {
+              y: 100,
+              opacity: 0,
+              duration: 1,
+              stagger: 0.1,
+              ease: "power4.out"
+          })
+          .from(".hero-sub", {
+              opacity: 0,
+              y: 20,
+              duration: 0.8
+          }, "-=0.5")
+          .from(".hero-btn", {
+              scale: 0.8,
+              opacity: 0,
+              duration: 0.5,
+              ease: "back.out(1.7)"
+          }, "-=0.5");
+      }, heroRef);
+      return () => ctx.revert();
+  }, []);
 
   const loadAuctions = useCallback(async () => {
     setIsLoading(true);
@@ -103,12 +54,12 @@ export default function Home() {
           auctionClient.getAuction(count - i)
         );
         const results = (await Promise.all(promises)).filter(Boolean) as AuctionData[];
-        setAuctions(results.length > 0 ? results : DEMO_AUCTIONS);
+        setAuctions(results);
       } else {
-        setAuctions(DEMO_AUCTIONS);
+        setAuctions([]);
       }
     } catch {
-      setAuctions(DEMO_AUCTIONS);
+      setAuctions([]);
     } finally {
       setIsLoading(false);
     }
@@ -119,6 +70,16 @@ export default function Home() {
     loadAuctions();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Reload auctions when navigating back with refresh state
+  useEffect(() => {
+    if (location.state?.refresh) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      loadAuctions();
+      // Clear the state to prevent reloading on every render
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, loadAuctions]);
 
   // Mark a single auction as ended without reloading the whole list
   const handleAuctionEnd = useCallback((id: number) => {
@@ -131,7 +92,8 @@ export default function Home() {
     const matchesFilter =
       filter === 'all' ||
       (filter === 'active' && a.status === 'active' && a.endTime > new Date()) ||
-      (filter === 'ended' && (a.status === 'ended' || a.endTime <= new Date()));
+      (filter === 'ended' && (a.status === 'ended' || a.endTime <= new Date())) ||
+      (filter === 'cancelled' && a.status === 'cancelled');
     const matchesSearch =
       !search ||
       a.itemName.toLowerCase().includes(search.toLowerCase()) ||
@@ -148,69 +110,77 @@ export default function Home() {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <div className="relative overflow-hidden py-16 px-4"
-        style={{ background: 'linear-gradient(160deg, rgba(139,92,246,0.08) 0%, transparent 60%)' }}>
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold mb-4 animate-fade-in"
-              style={{
-                background: 'rgba(139,92,246,0.1)',
-                border: '1px solid rgba(139,92,246,0.2)',
-                color: '#a78bfa',
-              }}>
-              <Zap size={11} />
-              Powered by Soroban Smart Contracts on Stellar Testnet
-            </div>
+      <section ref={heroRef} className="min-h-[85vh] flex flex-col justify-center px-6 pt-24 pb-20 relative overflow-hidden border-b border-white/10 text-white">
+          <div className="max-w-[1920px] mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+              <div className="lg:col-span-8 z-10">
+                  <div className="overflow-hidden mb-2">
+                      <h1 className="hero-line text-6xl md:text-8xl lg:text-[7rem] font-bold tracking-tighter leading-[0.9] uppercase">
+                          Decentralized<span className="text-lime-400">.</span>
+                      </h1>
+                  </div>
+                  <div className="overflow-hidden mb-2">
+                      <h1 className="hero-line text-6xl md:text-8xl lg:text-[7rem] font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-zinc-200 to-zinc-600 leading-[0.9] uppercase">
+                          Auctions<span className="text-indigo-500">.</span>
+                      </h1>
+                  </div>
+                  <div className="overflow-hidden mb-8">
+                      <h1 className="hero-line text-6xl md:text-8xl lg:text-[7rem] font-bold tracking-tighter leading-[0.9] uppercase">
+                          On Stellar<span className="text-pink-500">.</span>
+                      </h1>
+                  </div>
 
-            <h1 className="text-4xl sm:text-5xl font-black mb-4 tracking-tight animate-slide-up">
-              <span className="gradient-text">Decentralized</span>
-              <br />
-              <span className="text-white">Auctions on Stellar</span>
-            </h1>
-            <p className="text-slate-400 text-lg max-w-xl mx-auto mb-8 animate-slide-up">
-              Bid on exclusive digital assets. Transparent, trustless, and real-time.
-              All powered by Soroban smart contracts.
-            </p>
+                  <p className="hero-sub text-zinc-400 font-mono text-lg max-w-xl mb-10 border-l-2 border-lime-400 pl-4">
+          // Bid on exclusive digital assets. <br />
+          // Transparent, trustless, and real-time. <br />
+          // Powered by Soroban smart contracts.
+                  </p>
 
-            <div className="flex items-center justify-center gap-3 animate-slide-up">
-              <Link to="/create" id="hero-create-btn" className="btn-primary text-base px-6 py-3">
-                <Plus size={18} />
-                Create Auction
-              </Link>
-              {!isConnected && (
-                <button onClick={() => connect()} className="btn-secondary text-base px-6 py-3">
-                  <Zap size={18} />
-                  Connect Wallet
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Stats Bar */}
-          <div className="grid grid-cols-3 gap-4 max-w-2xl mx-auto">
-            {[
-              { label: 'Total Auctions', value: stats.total, icon: <Gavel size={16} /> },
-              { label: 'Live Now', value: stats.active, icon: <Zap size={16} />, highlight: true },
-              { label: 'Total Volume', value: `${stats.totalVolume.toFixed(0)} XLM`, icon: <TrendingUp size={16} /> },
-            ].map(({ label, value, icon, highlight }) => (
-              <div key={label} className="text-center p-4 rounded-xl"
-                style={{
-                  background: highlight ? 'rgba(139,92,246,0.08)' : 'rgba(22,27,39,0.5)',
-                  border: `1px solid ${highlight ? 'rgba(139,92,246,0.2)' : 'rgba(139,92,246,0.08)'}`,
-                }}>
-                <div className="flex items-center justify-center gap-1 mb-1" style={{ color: highlight ? '#a78bfa' : '#64748b' }}>
-                  {icon}
-                  <span className="text-xs">{label}</span>
-                </div>
-                <p className="font-bold text-xl text-white">{value}</p>
+                  <div className="flex gap-4 pb-12">
+                      <Link to="/create" id="hero-create-btn" className="hero-btn group relative px-8 py-4 bg-lime-400 text-black font-bold font-mono uppercase overflow-hidden inline-flex items-center">
+                          <div className="absolute inset-0 bg-white translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-in-out" />
+                          <span className="relative z-10 flex items-center gap-2">
+                              Create Auction <Plus className="w-5 h-5" />
+                          </span>
+                      </Link>
+                      {!isConnected && (
+                        <button onClick={() => openModal()} className="hero-btn px-8 py-4 bg-transparent border border-white/20 text-white font-bold font-mono uppercase hover:border-lime-400 transition-colors flex items-center gap-2">
+                            <Zap className="w-5 h-5" /> Connect
+                        </button>
+                      )}
+                  </div>
               </div>
-            ))}
+
+              <div className="lg:col-span-4 h-[420px] flex items-center justify-center">
+                  <BidCube />
+              </div>
           </div>
-        </div>
+      </section>
+      
+      <Marquee />
+
+      <div className="py-20 bg-zinc-900/50 border-b border-white/10">
+          <div className="max-w-[1920px] mx-auto px-6 grid grid-cols-2 md:grid-cols-3 gap-px bg-white/5 border border-white/10 overflow-hidden">
+              {[
+                { label: 'Total Auctions', value: stats.total, icon: <Gavel className="mb-2 text-zinc-500" size={24} /> },
+                { label: 'Live Now', value: stats.active, icon: <Zap className="mb-2 text-lime-400" size={24} />, highlight: true },
+                { label: 'Total Volume', value: `${stats.totalVolume.toFixed(0)} XLM`, icon: <TrendingUp className="mb-2 text-zinc-500" size={24} /> },
+              ].map((s, i) => (
+                  <div key={i} className="bg-zinc-950 p-12 flex flex-col items-center text-center group transition-colors hover:bg-zinc-900/80">
+                      {s.icon}
+                      <div className={`text-5xl md:text-7xl font-bold mb-4 tracking-tighter ${s.highlight ? 'text-lime-400' : 'text-white'}`}>{s.value}</div>
+                      <div className="font-mono text-xs text-zinc-500 uppercase tracking-widest mb-2">_{s.label}</div>
+                  </div>
+              ))}
+          </div>
       </div>
 
       {/* Auction Grid */}
-      <div className="max-w-7xl mx-auto px-4 pb-16">
+      <div className="max-w-[1920px] mx-auto px-6 py-32">
+        <div className="mb-16 border-b border-white/10 pb-8 flex flex-col md:flex-row justify-between items-end">
+            <h2 className="text-5xl md:text-7xl font-bold uppercase tracking-tighter">
+                System <span className="text-zinc-600">Auctions</span>
+            </h2>
+        </div>
         {/* Filters */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-8">
           <div className="relative flex-1 max-w-sm">
@@ -225,35 +195,37 @@ export default function Home() {
             />
           </div>
 
-          <div className="flex gap-2">
-            {(['all', 'active', 'ended'] as FilterType[]).map(f => (
+          <div className="flex flex-wrap gap-2">
+            {(['all', 'active', 'ended', 'cancelled'] as FilterType[]).map(f => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
                 id={`filter-${f}`}
-                className="px-4 py-2 rounded-xl text-sm font-medium capitalize transition-all"
-                style={{
-                  background: filter === f ? 'rgba(139,92,246,0.15)' : 'rgba(22,27,39,0.5)',
-                  border: `1px solid ${filter === f ? 'rgba(139,92,246,0.35)' : 'rgba(139,92,246,0.08)'}`,
-                  color: filter === f ? '#a78bfa' : '#64748b',
-                }}
+                className={`px-6 py-3 font-mono text-sm uppercase tracking-widest font-bold transition-all border ${filter === f ? 'bg-lime-400 text-black border-lime-400' : 'bg-transparent text-zinc-400 border-white/20 hover:border-lime-400 hover:text-white'}`}
               >
                 {f}
               </button>
             ))}
+            <button
+              onClick={loadAuctions}
+              disabled={isLoading}
+              className="px-6 py-3 bg-transparent border border-white/20 text-zinc-400 hover:border-lime-400 hover:text-white transition-all ml-auto disabled:opacity-50 flex items-center justify-center"
+              title="Refresh auctions"
+            >
+              <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
+            </button>
           </div>
         </div>
 
-        {/* Loading Skeletons */}
         {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="rounded-2xl overflow-hidden" style={{ height: 340 }}>
-                <div className="shimmer h-44" />
-                <div className="p-4 space-y-3">
-                  <div className="shimmer h-4 w-2/3" />
-                  <div className="shimmer h-3 w-full" />
-                  <div className="shimmer h-10 rounded-xl" />
+              <div key={i} className="bg-zinc-900/50 border border-white/10 p-6" style={{ height: 340 }}>
+                <div className="shimmer h-44 mb-4" />
+                <div className="space-y-4">
+                  <div className="shimmer h-6 w-2/3" />
+                  <div className="shimmer h-4 w-full" />
+                  <div className="shimmer h-12 mt-4" />
                 </div>
               </div>
             ))}

@@ -1,61 +1,115 @@
 import React, { useState } from 'react';
-import { Wallet, ChevronDown, LogOut, ExternalLink, AlertCircle } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Wallet, ChevronDown, LogOut, ExternalLink, AlertCircle, X } from 'lucide-react';
 import { useWallet } from '../hooks/useWallet';
 import { truncateAddress, getExplorerAccountUrl } from '../lib/stellar';
+import { SUPPORTED_WALLETS } from '../lib/wallet';
 
 export default function WalletConnect() {
   const { wallet, isConnected, isConnecting, isReconnecting, error, connect, disconnect, clearError } = useWallet();
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showConnectModal, setShowConnectModal] = useState(false);
+
+  const handleConnect = async (walletId: string) => {
+    setShowConnectModal(false);
+    await connect(walletId);
+  };
+
+  // Wallet Selection Modal — rendered via Portal to escape Navbar stacking context
+  const walletModal = showConnectModal ? createPortal(
+    <div className="fixed inset-0 z-[9998] flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/80 backdrop-blur-md"
+        onClick={() => setShowConnectModal(false)}
+      />
+      {/* Modal Panel */}
+      <div className="relative bg-zinc-950 border-2 border-lime-400 p-8 w-full max-w-md shadow-[10px_10px_0px_rgba(163,230,53,0.2)] animate-slide-up font-mono">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8 border-b border-white/10 pb-4">
+          <h2 className="text-2xl font-bold uppercase tracking-tighter text-white">
+            Connect <span className="text-lime-400">Wallet</span>
+          </h2>
+          <button
+            onClick={() => setShowConnectModal(false)}
+            className="text-zinc-500 hover:text-white transition-colors p-1"
+          >
+            <X size={24} />
+          </button>
+        </div>
+
+        {/* Wallet Options */}
+        <div className="space-y-3">
+          {SUPPORTED_WALLETS.map(w => (
+            <button
+              key={w.id}
+              onClick={() => handleConnect(w.id)}
+              className="w-full flex items-center justify-between p-5 bg-transparent border border-white/20 hover:border-lime-400 hover:bg-white/[0.02] group transition-all duration-200"
+            >
+              <div className="flex items-center gap-4">
+                <div className="text-3xl group-hover:scale-110 transition-transform duration-200">
+                  {w.icon}
+                </div>
+                <div className="text-left">
+                  <div className="text-white font-bold uppercase tracking-widest text-base group-hover:text-lime-400 transition-colors">
+                    {w.name}
+                  </div>
+                  <div className="text-zinc-600 text-xs mt-1 font-mono">
+                    // {w.description}
+                  </div>
+                </div>
+              </div>
+              <div className="w-2 h-2 bg-transparent border border-white/20 group-hover:bg-lime-400 group-hover:border-lime-400 transition-all duration-200" />
+            </button>
+          ))}
+        </div>
+
+        {/* Footer */}
+        <div className="mt-8 pt-4 border-t border-white/10 text-center">
+          <p className="text-xs text-zinc-700 uppercase tracking-widest">
+            Powered by Stellar Wallets Kit
+          </p>
+        </div>
+      </div>
+    </div>,
+    document.body
+  ) : null;
 
   if (isConnected && wallet) {
     return (
       <div className="relative">
         <button
           onClick={() => setShowDropdown(d => !d)}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all"
-          style={{
-            background: 'rgba(139,92,246,0.12)',
-            border: '1px solid rgba(139,92,246,0.25)',
-            color: '#a78bfa',
-          }}
+          className="flex items-center gap-2 px-4 py-2 bg-transparent border border-white/20 hover:border-lime-400 transition-colors uppercase font-mono text-sm tracking-widest text-white hover:text-lime-400"
         >
-          <div className="w-2 h-2 rounded-full bg-emerald-400" style={{ boxShadow: '0 0 6px #34d399' }} />
-          <span className="font-mono text-xs">{truncateAddress(wallet.address, 5)}</span>
+          <div className="w-2 h-2 bg-lime-400" />
+          <span>{truncateAddress(wallet.address, 5)}</span>
           <ChevronDown size={14} className={`transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
         </button>
 
         {showDropdown && (
           <>
             <div className="fixed inset-0 z-10" onClick={() => setShowDropdown(false)} />
-            <div
-              className="absolute right-0 top-full mt-2 z-20 rounded-xl p-2 min-w-[220px] animate-slide-down"
-              style={{
-                background: 'rgba(22,27,39,0.98)',
-                border: '1px solid rgba(139,92,246,0.2)',
-                boxShadow: '0 10px 30px rgba(0,0,0,0.4)',
-              }}
-            >
-              <div className="px-3 py-2 border-b mb-1" style={{ borderColor: 'rgba(139,92,246,0.1)' }}>
-                <p className="text-xs text-slate-400 mb-0.5">Connected via {wallet.walletName}</p>
-                <p className="font-mono text-xs text-slate-300">{truncateAddress(wallet.address, 8)}</p>
+            <div className="absolute right-0 top-full mt-2 z-20 p-4 min-w-[240px] animate-slide-down bg-zinc-950 border border-white/20 shadow-2xl font-mono">
+              <div className="pb-4 border-b border-white/10 mb-2">
+                <p className="text-xs text-zinc-500 uppercase tracking-widest mb-1">Via {wallet.walletName}</p>
+                <p className="text-sm text-white break-all">{truncateAddress(wallet.address, 8)}</p>
               </div>
 
               <a
                 href={getExplorerAccountUrl(wallet.address)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-slate-300 hover:text-white transition-colors w-full text-left"
-                style={{ ':hover': { background: 'rgba(139,92,246,0.1)' } } as React.CSSProperties}
+                className="flex items-center gap-2 px-3 py-3 text-sm text-zinc-400 hover:text-white hover:bg-white/5 transition-colors w-full text-left uppercase tracking-widest"
                 onClick={() => setShowDropdown(false)}
               >
                 <ExternalLink size={14} />
-                View on Explorer
+                Explorer
               </a>
 
               <button
                 onClick={() => { disconnect(); setShowDropdown(false); }}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm w-full text-left transition-colors"
-                style={{ color: '#fb7185' }}
+                className="flex items-center gap-2 px-3 py-3 text-sm w-full text-left transition-colors text-pink-500 hover:bg-white/5 uppercase tracking-widest mt-1"
               >
                 <LogOut size={14} />
                 Disconnect
@@ -70,21 +124,20 @@ export default function WalletConnect() {
   return (
     <div className="flex items-center gap-2">
       {isReconnecting && !isConnected && (
-        <div className="flex items-center gap-2 text-xs text-slate-400">
+        <div className="flex items-center gap-2 text-xs text-zinc-400 font-mono">
           <div className="spinner" style={{ width: 12, height: 12 }} />
           Reconnecting…
         </div>
       )}
       {error && (
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs animate-fade-in"
-          style={{ background: 'rgba(251,113,133,0.1)', color: '#fb7185', border: '1px solid rgba(251,113,133,0.2)' }}>
+        <div className="flex items-center gap-2 px-3 py-2 text-pink-500 border border-pink-500 font-mono text-xs uppercase tracking-widest">
           <AlertCircle size={12} />
           <span>{error.message}</span>
-          <button onClick={clearError} className="ml-1 hover:opacity-70">✕</button>
+          <button onClick={clearError} className="ml-2 hover:text-white transition-colors">✕</button>
         </div>
       )}
       <button
-        onClick={() => connect()}
+        onClick={() => setShowConnectModal(true)}
         disabled={isConnecting}
         className="btn-primary"
         id="connect-wallet-btn"
@@ -101,6 +154,8 @@ export default function WalletConnect() {
           </>
         )}
       </button>
+
+      {walletModal}
     </div>
   );
 }

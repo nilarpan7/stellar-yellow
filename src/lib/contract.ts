@@ -20,7 +20,7 @@ export interface AuctionData {
   highestBid: number;    // in XLM
   highestBidder: string;
   endTime: Date;
-  status: 'active' | 'ended';
+  status: 'active' | 'ended' | 'cancelled';
   imageUrl?: string;
 }
 
@@ -93,14 +93,18 @@ function parseAuctionScVal(val: xdr.ScVal, id: number): AuctionData | null {
     // Soroban enum variants are returned as scvVec([scvSymbol("VariantName"), ...])
     // or as scvSymbol("VariantName") for unit variants.
     const statusVal = get('status');
-    let isEnded = false;
+    let status: 'active' | 'ended' | 'cancelled' = 'active';
     if (statusVal) {
       try {
         const switchName = statusVal.switch().name;
         if (switchName === 'scvSymbol') {
           // Unit enum variant — check the symbol name
           const sym = Buffer.from(statusVal.sym()).toString();
-          isEnded = sym === 'Ended' || sym === 'ended';
+          if (sym === 'Ended' || sym === 'ended') {
+            status = 'ended';
+          } else if (sym === 'Cancelled' || sym === 'cancelled') {
+            status = 'cancelled';
+          }
         } else if (switchName === 'scvVec') {
           // Tuple/struct enum variant — first element is the discriminant symbol
           const vec = statusVal.vec();
@@ -108,12 +112,16 @@ function parseAuctionScVal(val: xdr.ScVal, id: number): AuctionData | null {
             const discriminant = vec[0];
             if (discriminant.switch().name === 'scvSymbol') {
               const sym = Buffer.from(discriminant.sym()).toString();
-              isEnded = sym === 'Ended' || sym === 'ended';
+              if (sym === 'Ended' || sym === 'ended') {
+                status = 'ended';
+              } else if (sym === 'Cancelled' || sym === 'cancelled') {
+                status = 'cancelled';
+              }
             }
           }
         }
       } catch {
-        isEnded = false;
+        status = 'active';
       }
     }
 
@@ -126,7 +134,7 @@ function parseAuctionScVal(val: xdr.ScVal, id: number): AuctionData | null {
       highestBid: Number(highestBidStroops) / 10_000_000,
       highestBidder: scValToAddress(get('highest_bidder')!),
       endTime: new Date(endTimeSecs * 1000),
-      status: isEnded ? 'ended' : 'active',
+      status,
     };
   } catch (e) {
     console.error('Failed to parse auction:', e);
@@ -142,6 +150,17 @@ export class AuctionContractClient {
   constructor(contractId: string = CONTRACT_ADDRESS) {
     this.server = getRpcServer();
     this.contractId = contractId;
+    
+    // Log contract initialization
+    console.log('AuctionContractClient initialized:', {
+      contractId: this.contractId,
+      rpcUrl: getSorobanRpcUrl(),
+      network: NETWORK_CONFIG.networkPassphrase,
+    });
+    
+    if (!this.contractId) {
+      console.error('WARNING: No contract address configured!');
+    }
   }
 
   private async simulateAndSend(
@@ -266,16 +285,41 @@ export class AuctionContractClient {
     }
   }
 
+  // ── cancel_auction ──────────────────────────────────────────────────────────
+  async cancelAuction(params: {
+    auctionId: number;
+    caller: string;
+    signTransaction: (xdr: string) => Promise<string>;
+  }): Promise<string> {
+    try {
+      const contract = new Contract(this.contractId);
+      const op = contract.call(
+        'cancel_auction',
+        u64ToScVal(params.auctionId),
+        addressToScVal(params.caller)
+      );
+      return await this.simulateAndSend(op, params.caller, params.signTransaction);
+    } catch (err) {
+      throw parseContractError(err);
+    }
+  }
+
   // ── get_auction (read-only simulation) ─────────────────────────────────────
   async getAuction(auctionId: number): Promise<AuctionData | null> {
     try {
       const contract = new Contract(this.contractId);
       const op = contract.call('get_auction', u64ToScVal(auctionId));
 
-      // Use a dummy account for simulation
-      const dummyKeypair = { publicKey: () => 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN' };
-      const account = await this.server.getAccount(dummyKeypair.publicKey()).catch(() => null);
-      if (!account) return null;
+      // Use testnet deployer account for read-only simulation
+      const sourceKey = 'GCOQZSZBG7RLGKHDRRUL4DQZP5QGYFDYORFSZVWOGTQGMHNP6XN6LG3Q';
+      const account = await this.server.getAccount(sourceKey).catch((err) => {
+        console.error('Failed to get source account for getAuction:', err);
+        return null;
+      });
+      if (!account) {
+        console.error('Source account not found for getAuction simulation');
+        return null;
+      }
 
       const tx = new TransactionBuilder(account, {
         fee: BASE_FEE,
@@ -283,10 +327,20 @@ export class AuctionContractClient {
       }).addOperation(op).setTimeout(10).build();
 
       const sim = await this.server.simulateTransaction(tx);
-      if (!SorobanRpc.Api.isSimulationSuccess(sim) || !sim.result) return null;
+      
+      if (!SorobanRpc.Api.isSimulationSuccess(sim)) {
+        console.error('getAuction simulation failed:', sim);
+        return null;
+      }
+      
+      if (!sim.result) {
+        console.error('No result from getAuction simulation');
+        return null;
+      }
 
       return parseAuctionScVal(sim.result.retval, auctionId);
-    } catch {
+    } catch (err) {
+      console.error('Error getting auction:', err);
       return null;
     }
   }
@@ -297,9 +351,16 @@ export class AuctionContractClient {
       const contract = new Contract(this.contractId);
       const op = contract.call('get_auction_count');
 
-      const dummyKey = 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN';
-      const account = await this.server.getAccount(dummyKey).catch(() => null);
-      if (!account) return 0;
+      // Use testnet deployer account for read-only simulation
+      const sourceKey = 'GCOQZSZBG7RLGKHDRRUL4DQZP5QGYFDYORFSZVWOGTQGMHNP6XN6LG3Q';
+      const account = await this.server.getAccount(sourceKey).catch((err) => {
+        console.error('Failed to get source account:', err);
+        return null;
+      });
+      if (!account) {
+        console.error('Source account not found for simulation');
+        return 0;
+      }
 
       const tx = new TransactionBuilder(account, {
         fee: BASE_FEE,
@@ -307,10 +368,20 @@ export class AuctionContractClient {
       }).addOperation(op).setTimeout(10).build();
 
       const sim = await this.server.simulateTransaction(tx);
-      if (!SorobanRpc.Api.isSimulationSuccess(sim) || !sim.result) return 0;
+      
+      if (!SorobanRpc.Api.isSimulationSuccess(sim)) {
+        console.error('Simulation failed:', sim);
+        return 0;
+      }
+      
+      if (!sim.result) {
+        console.error('No result from simulation');
+        return 0;
+      }
 
       return Number(scValToU64(sim.result.retval));
-    } catch {
+    } catch (err) {
+      console.error('Error getting auction count:', err);
       return 0;
     }
   }
