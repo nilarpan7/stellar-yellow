@@ -390,17 +390,22 @@ export class AuctionContractClient {
   // ── getEvents (polling) ─────────────────────────────────────────────────────
   async getRecentEvents(startLedger?: number): Promise<BidEvent[]> {
     try {
-      // Get the latest ledger to calculate a valid startLedger within retention window
-      let ledgerStart = startLedger;
-      if (!ledgerStart) {
-        try {
-          const latestLedger = await this.server.getLatestLedger();
-          // Go back ~1000 ledgers (~80 minutes on testnet, 5s per ledger)
-          ledgerStart = Math.max(1, latestLedger.sequence - 1000);
-        } catch {
-          console.error('Failed to get latest ledger, skipping event poll');
-          return [];
+      // Always get the latest ledger to ensure we're within the retention window
+      let ledgerStart: number;
+      try {
+        const latestLedger = await this.server.getLatestLedger();
+        // Stellar testnet keeps ~120k ledgers (~7 days)
+        // Go back 500 ledgers (~40 minutes) to catch recent events
+        // If startLedger is provided and recent enough, use it
+        const minValidLedger = latestLedger.sequence - 100000; // Safe margin
+        if (startLedger && startLedger > minValidLedger) {
+          ledgerStart = startLedger;
+        } else {
+          ledgerStart = Math.max(minValidLedger, latestLedger.sequence - 500);
         }
+      } catch (err) {
+        console.error('Failed to get latest ledger:', err);
+        return [];
       }
 
       const events = await this.server.getEvents({
@@ -409,11 +414,10 @@ export class AuctionContractClient {
           {
             type: 'contract',
             contractIds: [this.contractId],
-            topics: [['*', '*']],
           },
         ],
-        limit: 50,
-      });
+        pagination: { limit: 50 },
+      } as any);
 
       return events.events
         .filter(e => {
@@ -478,8 +482,8 @@ export class AuctionContractClient {
             eventType: eventName,
           };
         });
-    } catch (err) {
-      console.error('Event polling error:', err);
+    } catch (err: any) {
+      console.error('Event polling error:', err?.message || err?.response?.data || JSON.stringify(err));
       return [];
     }
   }

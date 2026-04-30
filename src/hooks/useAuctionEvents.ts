@@ -8,13 +8,13 @@ const POLL_INTERVAL_MS = 4000;
 export function useAuctionEvents(auctionId?: number, watchedAddress?: string) {
   const [events, setEvents] = useState<BidEvent[]>([]);
   const [isPolling, setIsPolling] = useState(false);
-  const lastLedgerRef = useRef<number>(1);
   const seenHashes = useRef<Set<string>>(new Set());
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchEvents = useCallback(async () => {
     try {
-      const newEvents = await auctionClient.getRecentEvents(lastLedgerRef.current);
+      // Don't pass a startLedger - let the contract client calculate a valid one
+      const newEvents = await auctionClient.getRecentEvents();
 
       const filtered = auctionId
         ? newEvents.filter(e => e.auctionId === auctionId)
@@ -41,8 +41,9 @@ export function useAuctionEvents(auctionId?: number, watchedAddress?: string) {
 
         setEvents(prev => [...fresh.reverse(), ...prev].slice(0, 100));
       }
-    } catch {
+    } catch (err) {
       // Silent fail — polling will retry
+      console.log('[Events] Polling error (will retry):', err);
     }
   }, [auctionId, watchedAddress]);
 

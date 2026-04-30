@@ -2,6 +2,16 @@
 
 A decentralized, real-time auction platform built on Stellar Soroban Testnet. Create, bid on, and manage auctions with full blockchain transparency and security.
 
+## 🎥 Demo Video
+
+Watch the full demo and walkthrough:
+
+[![StellarBid Demo](https://img.youtube.com/vi/s5cSEpsYQpM/maxresdefault.jpg)](https://www.youtube.com/watch?v=s5cSEpsYQpM)
+
+**[▶️ Watch on YouTube](https://www.youtube.com/watch?v=s5cSEpsYQpM)**
+
+---
+
 ## ✨ Features
 
 ### Core Functionality
