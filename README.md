@@ -85,6 +85,19 @@ A decentralized, real-time auction platform built on Stellar Soroban Testnet. Cr
 
 **Network:** Stellar Testnet
 
+**View on Explorer:** [Stellar Expert](https://stellar.expert/explorer/testnet/contract/CDGCWEZ5QQOVFMWJAQVYBUFJWQQBCFFPY7O56GIIFDSQLNYDDAUUXBS6)
+
+**Example Transaction Hash (Contract Call):**
+`5e4f8a2b1c...` *(Replace with your actual tx hash from Stellar Explorer)*
+
+> ⚠️ **To get a verifiable transaction hash:** Connect your wallet, create an auction or place a bid, and copy the tx hash from the success modal's "View on Stellar Explorer" link.
+
+### Wallet Options
+
+Multi-wallet support with Freighter, Albedo, and xBull:
+
+![Wallet Options](docs/wallet-options.png)
+
 **Functions:**
 - `create_auction(creator, item_name, description, starting_price, duration_secs)` - Create new auction
 - `place_bid(auction_id, bidder, amount)` - Place a bid
