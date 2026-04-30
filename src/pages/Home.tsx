@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Plus, Search, Gavel, Zap, TrendingUp, RefreshCw, ArrowUpRight } from 'lucide-react';
+import { Plus, Search, Gavel, Zap, TrendingUp, RefreshCw } from 'lucide-react';
 import { useLayoutEffect, useRef } from 'react';
 import gsap from "gsap";
 import AuctionCard from '../components/AuctionCard';
 import { Marquee } from '../components/LooComponents';
 import BidCube from '../components/BidCube';
-import { type AuctionData, auctionClient } from '../lib/contract';
+import EventFeed from '../components/EventFeed';
+import { type AuctionData, type BidEvent, auctionClient } from '../lib/contract';
 import { useWallet } from '../hooks/useWallet';
 
 type FilterType = 'all' | 'active' | 'ended' | 'cancelled';
@@ -14,9 +15,11 @@ type FilterType = 'all' | 'active' | 'ended' | 'cancelled';
 export default function Home() {
   const location = useLocation();
   const [auctions, setAuctions] = useState<AuctionData[]>([]);
+  const [events, setEvents] = useState<BidEvent[]>([]);
   const [filter, setFilter] = useState<FilterType>('all');
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isPolling, setIsPolling] = useState(false);
   const { isConnected, openModal } = useWallet();
   const heroRef = useRef(null);
 
@@ -69,6 +72,30 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadAuctions();
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Event Polling
+  useEffect(() => {
+    let mounted = true;
+    const poll = async () => {
+      if (!mounted) return;
+      setIsPolling(true);
+      try {
+        const recent = await auctionClient.getRecentEvents();
+        if (mounted) setEvents(recent);
+      } catch (err) {
+        console.error('Polling error:', err);
+      } finally {
+        if (mounted) setIsPolling(false);
+      }
+    };
+
+    poll();
+    const interval = setInterval(poll, 4000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
   // Reload auctions when navigating back with refresh state
@@ -158,19 +185,28 @@ export default function Home() {
       
       <Marquee />
 
+      {/* Live Activity & Stats */}
       <div className="py-20 bg-zinc-900/50 border-b border-white/10">
-          <div className="max-w-[1920px] mx-auto px-6 grid grid-cols-2 md:grid-cols-3 gap-px bg-white/5 border border-white/10 overflow-hidden">
-              {[
-                { label: 'Total Auctions', value: stats.total, icon: <Gavel className="mb-2 text-zinc-500" size={24} /> },
-                { label: 'Live Now', value: stats.active, icon: <Zap className="mb-2 text-lime-400" size={24} />, highlight: true },
-                { label: 'Total Volume', value: `${stats.totalVolume.toFixed(0)} XLM`, icon: <TrendingUp className="mb-2 text-zinc-500" size={24} /> },
-              ].map((s, i) => (
-                  <div key={i} className="bg-zinc-950 p-12 flex flex-col items-center text-center group transition-colors hover:bg-zinc-900/80">
-                      {s.icon}
-                      <div className={`text-5xl md:text-7xl font-bold mb-4 tracking-tighter ${s.highlight ? 'text-lime-400' : 'text-white'}`}>{s.value}</div>
-                      <div className="font-mono text-xs text-zinc-500 uppercase tracking-widest mb-2">_{s.label}</div>
-                  </div>
-              ))}
+          <div className="max-w-[1920px] mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
+              {/* Stats */}
+              <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-3 gap-px bg-white/5 border border-white/10 overflow-hidden">
+                  {[
+                    { label: 'Total Auctions', value: stats.total, icon: <Gavel className="mb-2 text-zinc-500" size={24} /> },
+                    { label: 'Live Now', value: stats.active, icon: <Zap className="mb-2 text-lime-400" size={24} />, highlight: true },
+                    { label: 'Total Volume', value: `${stats.totalVolume.toFixed(0)} XLM`, icon: <TrendingUp className="mb-2 text-zinc-500" size={24} /> },
+                  ].map((s, i) => (
+                      <div key={i} className="bg-zinc-950 p-12 flex flex-col items-center text-center group transition-colors hover:bg-zinc-900/80">
+                          {s.icon}
+                          <div className={`text-5xl md:text-7xl font-bold mb-4 tracking-tighter ${s.highlight ? 'text-lime-400' : 'text-white'}`}>{s.value}</div>
+                          <div className="font-mono text-xs text-zinc-500 uppercase tracking-widest mb-2">_{s.label}</div>
+                      </div>
+                  ))}
+              </div>
+
+              {/* Event Feed */}
+              <div className="lg:col-span-4 h-full">
+                  <EventFeed events={events} isPolling={isPolling} />
+              </div>
           </div>
       </div>
 

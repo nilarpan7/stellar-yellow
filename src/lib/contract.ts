@@ -30,6 +30,7 @@ export interface BidEvent {
   amount: number; // in XLM
   txHash: string;
   timestamp: Date;
+  eventType?: string;
 }
 
 // ─── RPC Server ───────────────────────────────────────────────────────────────
@@ -389,8 +390,21 @@ export class AuctionContractClient {
   // ── getEvents (polling) ─────────────────────────────────────────────────────
   async getRecentEvents(startLedger?: number): Promise<BidEvent[]> {
     try {
+      // Get the latest ledger to calculate a valid startLedger within retention window
+      let ledgerStart = startLedger;
+      if (!ledgerStart) {
+        try {
+          const latestLedger = await this.server.getLatestLedger();
+          // Go back ~1000 ledgers (~80 minutes on testnet, 5s per ledger)
+          ledgerStart = Math.max(1, latestLedger.sequence - 1000);
+        } catch {
+          console.error('Failed to get latest ledger, skipping event poll');
+          return [];
+        }
+      }
+
       const events = await this.server.getEvents({
-        startLedger: startLedger || 1,
+        startLedger: ledgerStart,
         filters: [
           {
             type: 'contract',
@@ -409,37 +423,63 @@ export class AuctionContractClient {
             const first = topics[0];
             if (first.switch().name !== 'scvSymbol') return false;
             const name = Buffer.from(first.sym()).toString();
-            return name === 'bid_plcd';
+            return name === 'bid_plcd' || name === 'auc_crt' || name === 'auc_end' || name === 'auc_cncl';
           } catch {
             return false;
           }
         })
         .map(e => {
           const topics = e.topic;
+          const eventName = (() => {
+            try { return Buffer.from(topics[0].sym()).toString(); } catch { return ''; }
+          })();
           const auctionId = Number(scValToU64(topics[1]));
           let bidder = '';
           let amount = 0;
-          try {
-            const valueVec = e.value.vec();
-            if (valueVec && valueVec.length >= 2) {
-              bidder = scValToAddress(valueVec[0]);
-              amount = Number(scValToI128(valueVec[1])) / 10_000_000;
-            }
-          } catch {
-            // value may be structured differently — try direct
+
+          if (eventName === 'bid_plcd') {
             try {
-              bidder = scValToAddress(e.value);
+              const valueVec = e.value.vec();
+              if (valueVec && valueVec.length >= 2) {
+                bidder = scValToAddress(valueVec[0]);
+                amount = Number(scValToI128(valueVec[1])) / 10_000_000;
+              }
+            } catch {
+              try { bidder = scValToAddress(e.value); } catch { /* ignore */ }
+            }
+          } else if (eventName === 'auc_crt') {
+            try {
+              const valueVec = e.value.vec();
+              if (valueVec && valueVec.length >= 1) {
+                bidder = scValToAddress(valueVec[0]);
+                if (valueVec.length >= 2) {
+                  amount = Number(scValToI128(valueVec[1])) / 10_000_000;
+                }
+              }
+            } catch {
+              try { bidder = scValToAddress(e.value); } catch { /* ignore */ }
+            }
+          } else if (eventName === 'auc_end') {
+            try {
+              const valueVec = e.value.vec();
+              if (valueVec && valueVec.length >= 2) {
+                bidder = scValToAddress(valueVec[0]);
+                amount = Number(scValToI128(valueVec[1])) / 10_000_000;
+              }
             } catch { /* ignore */ }
           }
+
           return {
             auctionId,
             bidder,
             amount,
             txHash: e.txHash,
             timestamp: new Date(),
+            eventType: eventName,
           };
         });
-    } catch {
+    } catch (err) {
+      console.error('Event polling error:', err);
       return [];
     }
   }

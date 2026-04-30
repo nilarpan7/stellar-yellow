@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Wallet, ChevronDown, LogOut, ExternalLink, AlertCircle, X } from 'lucide-react';
 import { useWallet } from '../hooks/useWallet';

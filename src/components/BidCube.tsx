@@ -41,9 +41,6 @@ export default function BidCube() {
       opacity: 0.55,
       envMapIntensity: 1.2,
     });
-    const cube = new THREE.Mesh(geo, mat);
-    cube.castShadow = true;
-    group.add(cube);
 
     // ── Glowing Wireframe Edges ───────────────────────────────
     const edgesGeo = new THREE.EdgesGeometry(geo);
@@ -83,10 +80,14 @@ export default function BidCube() {
       transparent: true,
       opacity: 0.95,
     });
+
     // Apply text only to front (+Z) face
-    const materials = Array(6).fill(mat);
-    materials[4] = faceMat;   // front face
-    cube.material = materials as THREE.Material[];
+    const materials = [mat, mat, mat, mat, faceMat, mat];
+
+    // ── Main Cube — Glassy dark material ──────────────────────
+    const cube = new THREE.Mesh(geo, materials);
+    cube.castShadow = true;
+    group.add(cube);
 
     // ── Floating Particles ────────────────────────────────────
     const particleCount = 120;
